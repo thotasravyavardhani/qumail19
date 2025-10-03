@@ -147,3 +147,5 @@ class QuantumService {
 // Export singleton instance
 const quantumService = new QuantumService();
 export default quantumService;
+
+
