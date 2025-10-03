@@ -3,13 +3,14 @@ import emailService from '../services/emailService';
 import quantumService from '../services/quantumService';
 import toast from 'react-hot-toast';
 
-const EmailInterface = ({ user, quantumStatus, onRefreshStatus }) => {
+const EmailInterface = ({ user, quantumStatus, onRefreshStatus, activeFolder = 'Inbox' }) => {
   const [activeView, setActiveView] = useState('inbox'); // inbox, compose
   const [emails, setEmails] = useState([]);
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [folders, setFolders] = useState(['Inbox', 'Sent', 'Quantum Vault']);
-  const [activeFolder, setActiveFolder] = useState('Inbox');
+  const [currentFolder, setCurrentFolder] = useState(activeFolder);
+  
+  const folders = ['Inbox', 'Sent', 'Quantum Vault'];
 
   // Compose state
   const [composeData, setComposeData] = useState({
@@ -28,9 +29,9 @@ const EmailInterface = ({ user, quantumStatus, onRefreshStatus }) => {
   // Load emails on component mount and folder change
   useEffect(() => {
     if (user) {
-      loadEmails(activeFolder);
+      loadEmails(currentFolder);
     }
-  }, [user, activeFolder]);
+  }, [user, currentFolder]);
 
   const loadEmails = async (folder = 'Inbox') => {
     try {
@@ -102,7 +103,7 @@ const EmailInterface = ({ user, quantumStatus, onRefreshStatus }) => {
       // Switch back to inbox and refresh
       setActiveView('inbox');
       setTimeout(() => {
-        loadEmails(activeFolder);
+        loadEmails(currentFolder);
         if (onRefreshStatus) onRefreshStatus();
       }, 1000);
 
@@ -170,7 +171,7 @@ const EmailInterface = ({ user, quantumStatus, onRefreshStatus }) => {
       ) : emails.length === 0 ? (
         <div className="empty-inbox">
           <div className="empty-icon">📭</div>
-          <h3>No emails in {activeFolder}</h3>
+          <h3>No emails in {currentFolder}</h3>
           <p>Quantum-encrypted messages will appear here</p>
         </div>
       ) : (
@@ -232,7 +233,7 @@ const EmailInterface = ({ user, quantumStatus, onRefreshStatus }) => {
             onClick={() => setSelectedEmail(null)}
             data-testid="back-to-list"
           >
-            ← Back to {activeFolder}
+            ← Back to {currentFolder}
           </button>
           
           <div className="email-detail-meta">
@@ -471,8 +472,8 @@ const EmailInterface = ({ user, quantumStatus, onRefreshStatus }) => {
               {folders.map(folder => (
                 <button
                   key={folder}
-                  className={`folder-button ${activeFolder === folder ? 'active' : ''}`}
-                  onClick={() => setActiveFolder(folder)}
+                  className={`folder-button ${currentFolder === folder ? 'active' : ''}`}
+                  onClick={() => setCurrentFolder(folder)}
                   data-testid={`folder-${folder.toLowerCase()}`}
                 >
                   {folder === 'Inbox' && '📥'}
@@ -484,7 +485,7 @@ const EmailInterface = ({ user, quantumStatus, onRefreshStatus }) => {
               
               <button 
                 className="refresh-button"
-                onClick={() => loadEmails(activeFolder)}
+                onClick={() => loadEmails(currentFolder)}
                 disabled={isLoading}
                 data-testid="refresh-emails"
               >
