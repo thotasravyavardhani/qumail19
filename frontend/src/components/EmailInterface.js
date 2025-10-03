@@ -857,6 +857,8 @@ const EmailInterface = ({ user, quantumStatus, onRefreshStatus, activeFolder = '
           display: flex;
           flex-direction: column;
           padding: 20px;
+          height: 100%;
+          overflow-y: auto;
         }
 
         .compose-header {
@@ -944,6 +946,8 @@ const EmailInterface = ({ user, quantumStatus, onRefreshStatus, activeFolder = '
           display: flex;
           flex-direction: column;
           gap: 16px;
+          overflow-y: auto;
+          max-height: calc(100vh - 200px);
         }
 
         .form-row {
@@ -975,6 +979,9 @@ const EmailInterface = ({ user, quantumStatus, onRefreshStatus, activeFolder = '
         .form-textarea {
           resize: vertical;
           min-height: 120px;
+          max-height: 300px;
+          overflow-y: auto;
+          scrollbar-width: thin;
         }
 
         .recipient-suggestions {
@@ -1015,7 +1022,12 @@ const EmailInterface = ({ user, quantumStatus, onRefreshStatus, activeFolder = '
           align-items: center;
           margin-top: 16px;
           padding-top: 16px;
+          padding-bottom: 16px;
           border-top: 1px solid var(--border-light);
+          position: sticky;
+          bottom: 0;
+          background: white;
+          z-index: 10;
         }
 
         .encryption-info {
