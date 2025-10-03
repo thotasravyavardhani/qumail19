@@ -249,7 +249,7 @@ async def login(user_data: UserLogin):
             
             if user_identity:
                 # Manually create the UserProfile object for the Core instance
-                qumail_core.current_user = QuMailCore.UserProfile(
+                qumail_core.current_user = UserProfile(
                     user_id=user_identity.user_id,
                     email=user_identity.email,
                     display_name=user_identity.display_name,
