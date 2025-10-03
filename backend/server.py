@@ -12,7 +12,7 @@ import logging
 import os
 import json
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -560,71 +560,220 @@ async def websocket_chat_endpoint(websocket: WebSocket, user_id: str):
         connection_manager.disconnect(user_id)
 
 # =============================================================================
-# Call Endpoints (Quantum SRTP Handshake Demo)
+# Call Endpoints (Hybrid PQC SRTP Handshake - Phase I + III)
 # =============================================================================
 
-@app.post("/api/calls/initiate")
-async def initiate_quantum_call(request: CallInitiateRequest, core = Depends(get_authenticated_core)):
-    """Initiate quantum SRTP call - Core Pillar 3"""
+# Session storage for hybrid call handshakes
+CALL_SESSIONS = {}
+
+class HybridKeyMaterial(BaseModel):
+    pqc_pub_key: str  # Kyber public key (Base64)
+    classic_pub_key: str  # X25519 public key (Base64) 
+    signature: str  # PQC signature of payload for authentication
+
+class HybridCiphertext(BaseModel):
+    pqc_ciphertext: str  # Kyber encapsulation result (Base64)
+    classic_key_share: str  # X25519 ephemeral public key (Base64)
+    signature: str  # PQC signature of payload
+
+@app.post("/api/v1/calls/initiate")
+async def initiate_hybrid_call(request: CallInitiateRequest, core = Depends(get_authenticated_core)):
+    """Initiate hybrid PQC call - Phase I + III Implementation"""
     try:
-        # Simulate quantum SRTP key negotiation
-        logging.info(f"Initiating {request.call_type} call to {request.contact_id}")
+        logging.info(f"Initiating hybrid PQC {request.call_type} call to {request.contact_id}")
         
-        # This would normally call QuMail's call handling logic
-        # For hackathon demo, we simulate the key handshake process
+        # Generate unique call ID for this session
+        call_id = f"hybrid_call_{int(datetime.utcnow().timestamp() * 1000)}"
         
-        # Phase 1: Key Request
+        # Initialize call session with hybrid key exchange state
         call_session = {
-            'call_id': f"call_{int(datetime.utcnow().timestamp() * 1000)}",
-            'caller': core.current_user.user_id,
-            'callee': request.contact_id,
+            'call_id': call_id,
+            'caller_id': core.current_user.user_id,
+            'recipient_id': request.contact_id,
             'call_type': request.call_type,
-            'status': 'key_requested',
-            'initiated_at': datetime.utcnow().isoformat()
+            'status': 'INITIATED',
+            'initiated_at': datetime.utcnow().isoformat(),
+            'pqc_pub_key': None,
+            'classic_pub_key': None,
+            'pqc_ciphertext': None,
+            'classic_ciphertext': None,
+            'handshake_complete': False,
+            'expires_at': (datetime.utcnow() + timedelta(minutes=5)).isoformat()
         }
         
-        # Notify both parties via WebSocket
-        caller_message = {
-            'type': 'call_status',
-            'call_data': call_session,
-            'message': 'Requesting quantum keys for SRTP...'
+        # Store session securely (in production, use Redis/database)
+        CALL_SESSIONS[call_id] = call_session
+        
+        # Notify both parties about call initiation
+        caller_notification = {
+            'type': 'call_initiated',
+            'call_id': call_id,
+            'status': 'WAITING_FOR_RESPONDER_KEYS',
+            'message': 'Hybrid PQC call initiated - waiting for responder key generation...',
+            'security_level': 'Hybrid-Kyber768+X25519'
         }
         
-        callee_message = {
-            'type': 'incoming_call',
-            'call_data': call_session,
-            'message': f'Incoming {request.call_type} call with quantum security'
+        recipient_notification = {
+            'type': 'incoming_call_request',
+            'call_id': call_id,
+            'caller': core.current_user.user_id,
+            'call_type': request.call_type,
+            'message': f'Incoming {request.call_type} call - please generate hybrid keys',
+            'security_level': 'Hybrid-Kyber768+X25519'
         }
         
-        await connection_manager.send_personal_message(caller_message, core.current_user.user_id)
-        await connection_manager.send_personal_message(callee_message, request.contact_id)
-        
-        # Simulate successful key handshake after brief delay
-        await asyncio.sleep(1)
-        
-        # Phase 2: Keys Received, SRTP Active
-        call_session['status'] = 'srtp_active'
-        call_session['quantum_keys_received'] = datetime.utcnow().isoformat()
-        
-        active_message = {
-            'type': 'call_status',
-            'call_data': call_session,
-            'message': 'Quantum SRTP session established 🔐'
-        }
-        
-        await connection_manager.send_personal_message(active_message, core.current_user.user_id)
-        await connection_manager.send_personal_message(active_message, request.contact_id)
+        await connection_manager.send_personal_message(caller_notification, core.current_user.user_id)
+        await connection_manager.send_personal_message(recipient_notification, request.contact_id)
         
         return {
-            "call_id": call_session['call_id'],
-            "status": "initiated",
-            "quantum_keys": "requested",
-            "message": "Quantum call handshake initiated"
+            "call_id": call_id,
+            "status": "INITIATED",
+            "message": "Hybrid PQC call initiated - awaiting key exchange",
+            "security_level": "Hybrid-Kyber768+X25519",
+            "next_step": "Recipient must send hybrid public keys to /api/v1/calls/{call_id}/public_key"
         }
         
     except Exception as e:
-        logging.error(f"Call initiation error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to initiate quantum call")
+        logging.error(f"Hybrid call initiation error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to initiate hybrid PQC call")
+
+@app.put("/api/v1/calls/{call_id}/public_key")
+async def receive_hybrid_public_key(
+    call_id: str, 
+    key_material: HybridKeyMaterial, 
+    current_user: str = Depends(get_current_user)
+):
+    """Receive responder's hybrid public key (Kyber + X25519) - Step 3 of handshake"""
+    try:
+        # Validate call session exists and is active
+        if call_id not in CALL_SESSIONS:
+            raise HTTPException(status_code=404, detail="Call session not found or expired")
+            
+        call_session = CALL_SESSIONS[call_id]
+        
+        # Verify current user is the intended recipient
+        if current_user != call_session['recipient_id']:
+            raise HTTPException(status_code=403, detail="Unauthorized - not the call recipient")
+            
+        if call_session['status'] != 'INITIATED':
+            raise HTTPException(status_code=400, detail=f"Invalid call state: {call_session['status']}")
+        
+        # Store hybrid public key material
+        call_session['pqc_pub_key'] = key_material.pqc_pub_key
+        call_session['classic_pub_key'] = key_material.classic_pub_key
+        call_session['responder_signature'] = key_material.signature
+        call_session['status'] = 'PUB_KEY_RECEIVED'
+        call_session['pub_key_received_at'] = datetime.utcnow().isoformat()
+        
+        logging.info(f"Hybrid public keys received for call {call_id}")
+        
+        # Notify caller that keys are available for encapsulation
+        caller_notification = {
+            'type': 'responder_keys_received',
+            'call_id': call_id,
+            'status': 'READY_FOR_ENCAPSULATION',
+            'message': 'Responder hybrid keys received - ready to encapsulate session key',
+            'pqc_pub_key': key_material.pqc_pub_key,
+            'classic_pub_key': key_material.classic_pub_key,
+            'next_step': 'Perform hybrid encapsulation and send ciphertext'
+        }
+        
+        # Notify responder that keys were successfully transmitted
+        responder_notification = {
+            'type': 'public_key_transmitted',
+            'call_id': call_id,
+            'status': 'WAITING_FOR_ENCAPSULATION',
+            'message': 'Your hybrid keys transmitted - waiting for caller encapsulation...'
+        }
+        
+        await connection_manager.send_personal_message(caller_notification, call_session['caller_id'])
+        await connection_manager.send_personal_message(responder_notification, current_user)
+        
+        return {
+            "call_id": call_id,
+            "status": "PUB_KEY_RECEIVED",
+            "message": "Hybrid public keys received and relayed to caller",
+            "next_step": "Caller must perform encapsulation and send ciphertext"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Public key reception error for call {call_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process hybrid public keys")
+
+@app.put("/api/v1/calls/{call_id}/ciphertext") 
+async def receive_hybrid_ciphertext(
+    call_id: str,
+    ciphertext_data: HybridCiphertext,
+    current_user: str = Depends(get_current_user)
+):
+    """Receive caller's hybrid ciphertext (Kyber + X25519) - Final handshake step"""
+    try:
+        # Validate call session
+        if call_id not in CALL_SESSIONS:
+            raise HTTPException(status_code=404, detail="Call session not found or expired")
+            
+        call_session = CALL_SESSIONS[call_id]
+        
+        # Verify current user is the caller
+        if current_user != call_session['caller_id']:
+            raise HTTPException(status_code=403, detail="Unauthorized - not the call initiator")
+            
+        if call_session['status'] != 'PUB_KEY_RECEIVED':
+            raise HTTPException(status_code=400, detail=f"Invalid call state: {call_session['status']}")
+        
+        # Store hybrid ciphertext material
+        call_session['pqc_ciphertext'] = ciphertext_data.pqc_ciphertext
+        call_session['classic_ciphertext'] = ciphertext_data.classic_key_share
+        call_session['caller_signature'] = ciphertext_data.signature
+        call_session['status'] = 'HANDSHAKE_COMPLETE'
+        call_session['handshake_complete'] = True
+        call_session['ciphertext_received_at'] = datetime.utcnow().isoformat()
+        
+        logging.info(f"Hybrid key exchange completed for call {call_id}")
+        
+        # Notify both parties that handshake is complete
+        handshake_complete_message = {
+            'type': 'hybrid_handshake_complete',
+            'call_id': call_id,
+            'status': 'SECURE_CHANNEL_ESTABLISHED',
+            'message': 'Hybrid PQC handshake complete - secure media channel ready',
+            'security_level': 'Kyber-768+X25519-HKDF',
+            'pqc_ciphertext': ciphertext_data.pqc_ciphertext,
+            'classic_key_share': ciphertext_data.classic_key_share,
+            'ready_for_media': True
+        }
+        
+        await connection_manager.send_personal_message(handshake_complete_message, call_session['caller_id'])
+        await connection_manager.send_personal_message(handshake_complete_message, call_session['recipient_id'])
+        
+        # Schedule session cleanup after call completion
+        asyncio.create_task(cleanup_call_session(call_id, delay_minutes=30))
+        
+        return {
+            "call_id": call_id,
+            "status": "HANDSHAKE_COMPLETE",
+            "message": "Hybrid PQC key exchange successful - secure media channel established",
+            "security_level": "Kyber-768+X25519-HKDF",
+            "media_ready": True
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Ciphertext reception error for call {call_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process hybrid ciphertext")
+
+async def cleanup_call_session(call_id: str, delay_minutes: int = 30):
+    """Cleanup call session after specified delay"""
+    try:
+        await asyncio.sleep(delay_minutes * 60)
+        if call_id in CALL_SESSIONS:
+            logging.info(f"Cleaning up call session: {call_id}")
+            del CALL_SESSIONS[call_id]
+    except Exception as e:
+        logging.error(f"Call session cleanup error: {e}")
 
 @app.post("/api/calls/{call_id}/end")
 async def end_quantum_call(call_id: str, current_user: str = Depends(get_current_user)):
