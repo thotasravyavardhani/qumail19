@@ -11,6 +11,7 @@ import asyncio
 import logging
 import os
 import json
+import hashlib
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, UploadFile, File
@@ -152,13 +153,15 @@ kme_simulator: Optional[KMESimulator] = None
 connection_manager = ConnectionManager()
 security = HTTPBearer()
 
-# Simple demo user store (hackathon-focused)
-demo_users = {
-    "alice@qumail.com": {"password": "quantum123", "display_name": "Alice Smith"},
-    "bob@qumail.com": {"password": "secure456", "display_name": "Bob Johnson"},
-    "demo@qumail.com": {"password": "demo123", "display_name": "Demo User"}
-}
+# backend/server.py (Lines 163-167)
 
+# Simple demo user store (using hashes for security)
+# backend/server.py (Lines 163-167)
+demo_users = {
+    "alice@qumail.com": {"password_hash": "e0bfb0a815022aa651c709941397700632ac97e3ac0b216f98587cb2b77af3ad", "display_name": "Alice Smith"}, 
+    "bob@qumail.com": {"password_hash": "80e9d0efe2d4f822c2ca5539dc8065b0cac985998e10929324221d8223d97db7", "display_name": "Bob Johnson"},
+    "demo@qumail.com": {"password_hash": "d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791", "display_name": "Demo User"}
+}
 # =============================================================================
 # Authentication & Dependencies
 # =============================================================================
@@ -233,30 +236,35 @@ async def login(user_data: UserLogin):
     try:
         email = user_data.email.lower()
         password = user_data.password
+        # Calculate hash of incoming password for security check
+        submitted_hash = hashlib.sha256(password.encode('utf-8')).hexdigest() # CRITICAL: Hash the submitted password
         
-        # Demo authentication check
-        if email not in demo_users:
-            raise HTTPException(status_code=401, detail="Invalid email or password")
-        
-        if demo_users[email]["password"] != password:
+        # Demo authentication check - Check against stored hash
+        if email not in demo_users or demo_users[email]["password_hash"] != submitted_hash:
             raise HTTPException(status_code=401, detail="Invalid email or password")
         
         # Create user session in QuMail Core
         if qumail_core:
-            # Mock authentication result for core
-            auth_result = {
-                'user_id': email.replace('@', '_').replace('.', '_'),
-                'email': email,
-                'name': demo_users[email]["display_name"],
-                'password_hash': '', # Demo mode - no actual hashing
-                'authenticated_at': datetime.utcnow().isoformat()
-            }
+            user_identity = qumail_core.identity_manager.check_credentials(email, password)
             
-            success = await qumail_core.authenticate_user("qumail_demo")
-            if success:
-                # Override with demo user data
-                qumail_core.current_user.email = email
-                qumail_core.current_user.display_name = demo_users[email]["display_name"]
+            if user_identity:
+                # Manually create the UserProfile object for the Core instance
+                qumail_core.current_user = QuMailCore.UserProfile(
+                    user_id=user_identity.user_id,
+                    email=user_identity.email,
+                    display_name=user_identity.display_name,
+                    password_hash=user_identity.password_hash,
+                    sae_id=user_identity.sae_id,
+                    provider="qumail_demo",
+                    created_at=user_identity.created_at,
+                    last_login=datetime.utcnow()
+                )
+                
+                # OPTIONAL: Initialize email/chat handlers for the new user session (recommended)
+                await qumail_core.email_handler.initialize(qumail_core.current_user)
+                await qumail_core.chat_handler.initialize(qumail_core.current_user)
+                
+                logging.info(f"Web API Login SUCCESS for: {email}")
                 
                 return {
                     "access_token": email,  # Simple token for demo
@@ -264,7 +272,7 @@ async def login(user_data: UserLogin):
                     "user": {
                         "email": email,
                         "display_name": demo_users[email]["display_name"],
-                        "sae_id": f"qumail_{email.replace('@', '_').replace('.', '_')}"
+                        "sae_id": qumail_core.current_user.sae_id
                     }
                 }
         
@@ -274,6 +282,7 @@ async def login(user_data: UserLogin):
         raise
     except Exception as e:
         logging.error(f"Login error: {e}")
+        # The crash is likely coming from here if the core setup failed later
         raise HTTPException(status_code=500, detail="Internal authentication error")
 
 @app.post("/api/auth/logout")
