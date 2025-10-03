@@ -1,7 +1,7 @@
 // Chat Service for QuMail Web
 // Handles WebSocket connections and real-time messaging
 
-import authService from './authService';
+//import authService from './authService';
 
 class ChatService {
   constructor() {
