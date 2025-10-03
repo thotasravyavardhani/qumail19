@@ -19,12 +19,14 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 import uvicorn
 
-# Import existing QuMail core components
+# FIXED: Import path resolution for Uvicorn
 import sys
 from pathlib import Path
+# Add the project root to the path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from qumail.core.app_core import QuMailCore, UserProfile
+# FIXED: Updated imports to resolve modules found in the new path
+from core.app_core import QuMailCore, UserProfile
 from crypto.kme_simulator import KMESimulator
 from utils.config import load_config
 from utils.logger import setup_logging
