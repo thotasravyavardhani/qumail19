@@ -1,4 +1,4 @@
-"# QuMail - Quantum Secure Email Client
+# QuMail - Quantum Secure Email Client
 ## ISRO-Grade Implementation - Updated Architecture
 
 ### 🚀 Recent Critical Improvements Applied
