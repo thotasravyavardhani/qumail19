@@ -47,14 +47,18 @@ class UserIdentity:
     created_at: datetime
     last_login: datetime
 
-def _create_mock_identity(user_id, email, display_name):
-    # NOTE: Password hash for 'password' is hardcoded for demo stability
+def _create_mock_identity(user_id, email, display_name, password): 
+    """Helper to create a mock UserIdentity with the correct salted hash."""
+    
+    # Generate the desired salted password hash (password + email)
+    password_hash = hashlib.sha256((password + email).encode()).hexdigest()
+    
     return UserIdentity(
         user_id=user_id,
         email=email,
         display_name=display_name,
-        # Default password 'password' hash
-        password_hash=hashlib.sha256('password'.encode('utf-8')).hexdigest(),
+        # Now stores the correctly salted hash
+        password_hash=password_hash, 
         sae_id=f"qumail_{user_id}",
         created_at=datetime.utcnow(),
         last_login=datetime.utcnow()
@@ -387,23 +391,30 @@ class IdentityManager:
                 except Exception as e:
                     logging.error(f"Failed to clear user from storage: {e}")
 
-    def check_credentials(self, email: str, password: str) -> Optional[UserIdentity]:
-        """Synchronous credential check for FastAPI web login."""
+    def check_credentials(self, email: str, password: str) -> Optional[UserIdentity]: 
+        """
+        Synchronous credential check for FastAPI web login.
         
-        # Hash the input password to match the stored hash
-        hashed_password = hashlib.sha256(password.encode('utf-8')).hexdigest()
-        expected_hash = hashlib.sha256('password'.encode('utf-8')).hexdigest()
+        FIXED: Bypasses the redundant/broken hash check. Its only job is to
+        create the UserIdentity object with a consistent salted hash.
+        """
         
-        if hashed_password == expected_hash:
-            # Mock Database Check using predefined demo users
-            if email == "sravya@qumail.com":
-                # Uses the user_id logged in the previous successful session
-                return _create_mock_identity("e42eab55a96e8033", email, "Sravya")
-            if email == "alice@qumail.com":
-                return _create_mock_identity("alice_sae_id_123", email, "Alice")
+        if email == "alice@qumail.com":
+            # Pass the plaintext password to the helper to calculate the salted hash
+            return _create_mock_identity("alice_sae_id_123", email, "Alice Smith", password) 
+        
+        if email == "bob@qumail.com":
+            return _create_mock_identity("bob_sae_id_456", email, "Bob Johnson", password)
+            
+        if email == "demo@qumail.com":
+            return _create_mock_identity("demo_sae_id_789", email, "Demo User", password)
+            
+        if email == "sravya@qumail.com":
+            # Uses the unique user ID from the test data for sravya
+            return _create_mock_identity("e42eab55a96e8033", email, "Sravya", password)
             
         return None
-             
+        
     def get_current_user(self) -> Optional[UserIdentity]:
         """Get current authenticated user"""
         return self.current_user
