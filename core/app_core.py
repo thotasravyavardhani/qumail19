@@ -16,13 +16,13 @@ from dataclasses import dataclass, asdict
 from datetime import datetime
 import os
 import aiofiles.os 
-from qumail.crypto.kme_client import KMEClient
-from qumail.crypto.cipher_strategies import CipherManager
-from qumail.transport.email_handler import EmailHandler
-from qumail.transport.chat_handler import ChatHandler
-from qumail.auth.identity_manager import IdentityManager
-from qumail.db.secure_storage import SecureStorage
-
+from crypto.kme_client import KMEClient
+from crypto.cipher_strategies import CipherManager
+from transport.email_handler import EmailHandler
+from transport.chat_handler import ChatHandler
+from auth.identity_manager import IdentityManager
+from db.secure_storage import SecureStorage
+from auth.oauth2_core import OAuth2CoreManager
 @dataclass
 class UserProfile:
     """User profile information"""
@@ -51,11 +51,11 @@ class QuMailCore:
             self.chat_handler = ChatHandler()
             self.secure_storage = SecureStorage()
             
-            # ISRO-GRADE: Initialize OAuth2Manager for production token management
-            from qumail.auth.oauth2_manager import OAuth2Manager
-            self.oauth_manager = OAuth2Manager()
+            # ISRO-GRADE: Initialize OAuth2CoreManager for production token management
+            from auth.oauth2_core import OAuth2CoreManager
+            self.oauth_manager = OAuth2CoreManager()
             
-            # FIXED: Initialize IdentityManager with OAuth2Manager dependency injection
+            # FIXED: Initialize IdentityManager with OAuth2CoreManager dependency injection
             self.identity_manager = IdentityManager(self.secure_storage, self.oauth_manager)
         except Exception as e:
             logging.error(f"Error initializing core components: {e}")
@@ -164,7 +164,7 @@ class QuMailCore:
                     auth_result
                 )
                 
-                # ISRO-GRADE: Initialize transport handlers with OAuth2Manager injection
+                # ISRO-GRADE: Initialize transport handlers with OAuth2CoreManager injection
                 await self.email_handler.initialize(self.current_user)
                 self.email_handler.user_id = self.current_user.user_id  # CRITICAL: Set user_id for OAuth token refresh
                 
@@ -174,7 +174,7 @@ class QuMailCore:
                         auth_result.get('access_token', ''),
                         auth_result.get('refresh_token', ''),
                         provider,
-                        self.oauth_manager  # CRITICAL: OAuth2Manager injection
+                        self.oauth_manager  # CRITICAL: OAuth2CoreManager injection
                     )
                 
                 await self.chat_handler.initialize(self.current_user)
@@ -205,7 +205,7 @@ class QuMailCore:
                 if self.identity_manager:
                     await self.identity_manager.initialize()
                     # Restore current user state in IdentityManager
-                    from ..auth.identity_manager import UserIdentity
+                    from auth.identity_manager import UserIdentity
                     restored_identity = UserIdentity(
                         user_id=self.current_user.user_id,
                         email=self.current_user.email,
@@ -217,19 +217,19 @@ class QuMailCore:
                     )
                     self.identity_manager.current_user = restored_identity
                 
-                # ISRO-GRADE: Load credentials and inject OAuth2Manager for transport handler
+                # ISRO-GRADE: Load credentials and inject OAuth2CoreManager for transport handler
                 credentials = await self.secure_storage.load_oauth_credentials(
                     self.current_user.provider, self.current_user.user_id
                 )
                 if credentials and hasattr(self.email_handler, 'set_credentials'):
-                    # Inject OAuth2Manager for production token refresh capability
+                    # Inject OAuth2CoreManager for production token refresh capability
                     await self.email_handler.set_credentials(
                         credentials.get('access_token'),
                         credentials.get('refresh_token'),
                         credentials.get('provider'),
-                        self.oauth_manager  # CRITICAL: OAuth2Manager dependency injection
+                        self.oauth_manager  # CRITICAL: OAuth2CoreManager dependency injection
                     )
-                    # CRITICAL: Set user_id for OAuth2Manager token refresh capabilities
+                    # CRITICAL: Set user_id for OAuth2CoreManager token refresh capabilities
                     self.email_handler.user_id = self.current_user.user_id
                 logging.info(f"User profile loaded and IdentityManager restored: {self.current_user.email}")
         except Exception as e:
