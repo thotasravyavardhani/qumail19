@@ -11,17 +11,42 @@ import base64
 import secrets
 from typing import Dict, Optional, List, Tuple
 from datetime import datetime, timedelta
-from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
-    QLineEdit, QComboBox, QProgressBar, QTextEdit, QMessageBox,
-    QCheckBox, QFrame
-)
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread
-from PyQt6.QtGui import QFont, QPixmap
 import webbrowser
 import urllib.parse
 
-class OAuth2LoginDialog(QDialog):
+# PyQt6 optional import for GUI components
+try:
+    from PyQt6.QtWidgets import (
+        QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
+        QLineEdit, QComboBox, QProgressBar, QTextEdit, QMessageBox,
+        QCheckBox, QFrame
+    )
+    from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread
+    from PyQt6.QtGui import QFont, QPixmap
+    PYQT_AVAILABLE = True
+except ImportError:
+    PYQT_AVAILABLE = False
+    # Create mock classes for headless operation
+    class QDialog: pass
+    class QVBoxLayout: pass
+    class QHBoxLayout: pass
+    class QLabel: pass
+    class QPushButton: pass
+    class QLineEdit: pass
+    class QComboBox: pass
+    class QProgressBar: pass
+    class QTextEdit: pass
+    class QMessageBox: pass
+    class QCheckBox: pass
+    class QFrame: pass
+    class Qt: pass
+    class QTimer: pass
+    class QThread: pass
+    class QFont: pass
+    class QPixmap: pass
+    def pyqtSignal(*args): pass
+
+class OAuth2LoginDialog(QDialog if PYQT_AVAILABLE else object):
     """OAuth2 login simulation dialog"""
     
     login_completed = pyqtSignal(dict)  # auth_result
@@ -345,6 +370,23 @@ class OAuth2Manager:
             
     async def _show_login_dialog(self, provider: str, parent_widget=None) -> Optional[Dict]:
         """Show the login dialog and wait for completion"""
+        if not PYQT_AVAILABLE:
+            # Headless mode - create mock auth result
+            logging.info(f"PyQt6 not available - using mock auth for {provider}")
+            mock_result = {
+                'user_id': f"mock_user_{provider}_{secrets.token_hex(8)}",
+                'email': f"demo@{provider}.com",
+                'name': f"Demo User ({provider})",
+                'access_token': f"mock_access_token_{provider}_{secrets.token_hex(16)}",
+                'refresh_token': f"mock_refresh_token_{provider}_{secrets.token_hex(16)}",
+                'expires_in': 3600,
+                'token_type': 'Bearer',
+                'scope': 'email.read email.write email.modify',
+                'provider': provider,
+                'authenticated_at': datetime.utcnow().isoformat()
+            }
+            return mock_result
+            
         dialog = OAuth2LoginDialog(provider, parent_widget)
         
         # Use a future to handle the async dialog
