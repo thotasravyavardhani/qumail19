@@ -1,0 +1,308 @@
+/* QuMail Web - Global Styles */
+/* ISRO-Grade Material Design Implementation */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  margin: 0;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', 
+    'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f5f5f5;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Material Design Color Palette */
+:root {
+  --primary-blue: #1E88E5;
+  --primary-blue-dark: #1565C0;
+  --primary-blue-light: #E3F2FD;
+  
+  --secondary-green: #00C853;
+  --secondary-green-dark: #00A046;
+  --secondary-green-light: #E8F5E8;
+  
+  --quantum-cyan: #00BCD4;
+  --quantum-cyan-dark: #00838F;
+  --quantum-cyan-light: #E0F2F1;
+  
+  --warning-orange: #FF9800;
+  --error-red: #F44336;
+  --success-green: #4CAF50;
+  
+  --background-primary: #FFFFFF;
+  --background-secondary: #F8F9FA;
+  --background-tertiary: #F5F5F5;
+  
+  --text-primary: #212121;
+  --text-secondary: #757575;
+  --text-hint: #BDBDBD;
+  
+  --border-light: #E0E0E0;
+  --border-medium: #BDBDBD;
+  
+  --shadow-light: 0 2px 4px rgba(0,0,0,0.1);
+  --shadow-medium: 0 4px 8px rgba(0,0,0,0.15);
+  --shadow-heavy: 0 8px 16px rgba(0,0,0,0.2);
+}
+
+/* Global Utility Classes */
+.quantum-gradient {
+  background: linear-gradient(135deg, var(--quantum-cyan) 0%, var(--primary-blue) 100%);
+}
+
+.security-indicator {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.security-l1 {
+  background-color: var(--quantum-cyan-light);
+  color: var(--quantum-cyan-dark);
+  border: 1px solid var(--quantum-cyan);
+}
+
+.security-l2 {
+  background-color: var(--primary-blue-light);
+  color: var(--primary-blue-dark);
+  border: 1px solid var(--primary-blue);
+}
+
+.security-l3 {
+  background-color: var(--secondary-green-light);
+  color: var(--secondary-green-dark);
+  border: 1px solid var(--secondary-green);
+}
+
+.security-l4 {
+  background-color: #EEEEEE;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-medium);
+}
+
+/* Material Design Buttons */
+.btn-primary {
+  background-color: var(--primary-blue);
+  color: white;
+  border: none;
+  border-radius: 24px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Roboto', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-light);
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-blue-dark);
+  box-shadow: var(--shadow-medium);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-light);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--primary-blue);
+  border: 2px solid var(--primary-blue);
+  border-radius: 24px;
+  padding: 10px 22px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Roboto', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: var(--primary-blue-light);
+  transform: translateY(-1px);
+}
+
+.btn-quantum {
+  background: var(--quantum-gradient);
+  color: white;
+  border: none;
+  border-radius: 24px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Roboto', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-light);
+}
+
+.btn-quantum:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-heavy);
+}
+
+/* Material Design Form Elements */
+.form-input {
+  width: 100%;
+  padding: 16px;
+  border: 2px solid var(--border-light);
+  border-radius: 8px;
+  font-size: 16px;
+  font-family: 'Roboto', sans-serif;
+  transition: border-color 0.2s ease;
+  background-color: var(--background-primary);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px var(--primary-blue-light);
+}
+
+.form-input::placeholder {
+  color: var(--text-hint);
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Material Design Cards */
+.card {
+  background-color: var(--background-primary);
+  border-radius: 12px;
+  box-shadow: var(--shadow-light);
+  padding: 24px;
+  transition: box-shadow 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-medium);
+}
+
+.card-header {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.card-title {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.card-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 4px 0 0 0;
+}
+
+/* Quantum Status Indicators */
+.quantum-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.quantum-status.connected {
+  background-color: var(--quantum-cyan-light);
+  color: var(--quantum-cyan-dark);
+}
+
+.quantum-status.degraded {
+  background-color: #FFF3E0;
+  color: var(--warning-orange);
+}
+
+.quantum-status.error {
+  background-color: #FFEBEE;
+  color: var(--error-red);
+}
+
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+/* Loading States */
+.loading-spinner {
+  border: 3px solid var(--border-light);
+  border-top: 3px solid var(--primary-blue);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .btn-primary,
+  .btn-secondary,
+  .btn-quantum {
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+  
+  .form-input {
+    padding: 14px;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+  
+  .card {
+    padding: 16px;
+    margin: 8px;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus indicators for keyboard navigation */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--primary-blue);
+  outline-offset: 2px;
+}
