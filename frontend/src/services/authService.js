@@ -3,8 +3,11 @@
 
 class AuthService {
   constructor() {
-    this.baseURL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
-    this.token = localStorage.getItem('qumail_token');
+    this.baseURL = process.env.NODE_ENV === 'development' 
+            ? '' 
+            : process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001'; 
+            
+        this.token = localStorage.getItem('qumail_token');
   }
 
   // Set authentication token
@@ -42,7 +45,8 @@ class AuthService {
   // Login user
   async login(email, password) {
     try {
-      const response = await fetch(`${this.baseURL}/api/auth/login`, {
+      const fullUrl = `${this.baseURL}/api/auth/login`; 
+      const response = await fetch(fullUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -57,17 +61,18 @@ class AuthService {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.detail || 'Login failed');
+        throw new Error(data.detail || `Login failed with status: ${response.status}`);
       }
-
       // Store token
       this.setToken(data.access_token);
 
       return data;
     } catch (error) {
-      console.error('Login error:', error);
-      throw error;
-    }
+      // Provide better console feedback for debugging
+            console.error('Login request failed. Check server logs (port 8001).', error); 
+            // Re-throw for handling in App.js
+            throw new Error(error.message || 'Network or Authentication failed. Check server status.');
+        }
   }
 
   // Logout user
@@ -75,7 +80,8 @@ class AuthService {
     try {
       const token = this.getToken();
       if (token) {
-        await fetch(`${this.baseURL}/api/auth/logout`, {
+        const fullUrl = `${this.baseURL}/api/auth/logout`;
+        await fetch(fullUrl, {
           method: 'POST',
           headers: this.getAuthHeaders()
         });
