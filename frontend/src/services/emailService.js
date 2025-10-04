@@ -2,12 +2,32 @@
 // Handles quantum-encrypted email sending and receiving
 
 import authService from './authService';
+const API_URL = process.env.NODE_ENV === 'development' ? '' : process.env.REACT_APP_BACKEND_URL;
 
 class EmailService {
   constructor() {
     this.baseURL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
   }
+  async loadEmails(folder) {
+        try {
+            const response = await fetch(`${API_URL}/api/emails/${folder}`, {
+                method: 'GET',
+                headers: authService.getAuthHeaders() // IMPORTANT: Uses the stored token
+            });
 
+            if (!response.ok) {
+                // Throwing an error here is what causes the "Failed to load emails" toast
+                const errorData = await response.json();
+                throw new Error(errorData.detail || `Server error loading ${folder}`);
+            }
+
+            return response.json();
+        } catch (error) {
+            console.error(`Error loading emails from ${folder}:`, error);
+            throw error;
+        }
+    }
+    
   // Send quantum-encrypted email
   async sendQuantumEmail(emailData) {
     try {
