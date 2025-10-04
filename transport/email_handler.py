@@ -17,6 +17,7 @@ import base64
 import json
 import ssl
 import time
+import sys
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText                  
@@ -24,8 +25,18 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication    
 from email.utils import formataddr, formatdate
 import aiofiles
-from ..utils.config import load_config
+# The original code's conditional import pattern is usually for handling
+# both package import (`..utils.config`) and direct script execution (which should
+# be `utils.config` assuming `qumail` is on the path).
+# We will use the direct import as a first-line solution, as the test environment seems to
+# be failing to establish the package context for the relative import.
 
+try:
+    from utils.config import load_config
+except ImportError:
+    # Fallback to the relative import for environments where `email_handler` is
+    # loaded as a sub-module of an actual package.
+    from ..utils.config import load_config
 # Production async email libraries
 try:
     import aiosmtplib
