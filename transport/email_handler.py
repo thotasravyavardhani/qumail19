@@ -24,7 +24,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication    
 from email.utils import formataddr, formatdate
 import aiofiles
-from utils.config import load_config
+from ..utils.config import load_config
 
 # Production async email libraries
 try:
